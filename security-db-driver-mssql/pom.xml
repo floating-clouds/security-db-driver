@@ -25,6 +25,12 @@
             <artifactId>mssql-jdbc</artifactId>
             <version>6.2.2.jre7</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.teclick.arch.jdbc</groupId>
+            <artifactId>security-db-password-store</artifactId>
+            <version>1.0.0.0</version>
+        </dependency>
     </dependencies>
 
 </project>
