@@ -15,10 +15,13 @@
  */
 package com.teclick.jdbc.mysql;
 
-import com.mysql.jdbc.Connection;
+import com.mysql.cj.MysqlConnection;
+import com.mysql.cj.jdbc.ConnectionImpl;
+import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
+import com.mysql.cj.log.Log;
 import com.teclick.jdbc.driver.SecurityDriver;
 
-import java.sql.SQLException;
+import java.sql.SQLClientInfoException;
 import java.util.Properties;
 
 /**
@@ -30,14 +33,16 @@ import java.util.Properties;
 public class MySQLClientInfoInjector extends ConnectionLifecycleInterceptorAdaptor {
 
     @Override
-    public void init(Connection conn, Properties props) throws SQLException {
-
-        super.init(conn, props);
-
+    public ConnectionLifecycleInterceptor init(MysqlConnection conn, Properties props, Log log) {
         String moduleName = props.getProperty(SecurityDriver.MODULE_KEY_NAME);
         if (null != moduleName) {
-            conn.setClientInfo(SecurityDriver.MODULE_KEY_NAME, moduleName);
+            try {
+                ((ConnectionImpl) conn).setClientInfo(SecurityDriver.MODULE_KEY_NAME, moduleName);
+            } catch (SQLClientInfoException e) {
+                log.logError("Set client info error.", e);
+            }
         }
+        return this;
     }
 
 }
