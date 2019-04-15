@@ -15,6 +15,7 @@
  */
 package com.teclick.jdbc.mysql;
 
+import com.mysql.cj.conf.ConnectionUrl;
 import com.teclick.jdbc.bridge.AbstractDriverBridge;
 import com.teclick.jdbc.core.ConnectionProvider;
 import com.teclick.jdbc.core.LoginPolicy;
@@ -24,7 +25,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
@@ -40,6 +40,10 @@ public class DriverBridgeMySQL extends AbstractDriverBridge {
 
     private static final Logger logger = Logger.getLogger(DriverBridgeMySQL.class.getName());
 
+    private static final String CONNECTION_ATTRIBUTES = "connectionAttributes";
+
+    private static final String PROGRAM_NAME_COL_NAME = "program_name:";
+
     private static final String CONNECTION_LIFECYCLE_INTERCEPTORS = "connectionLifecycleInterceptors";
 
     private static final String MYSQL_INJECTOR = "com.teclick.jdbc.mysql.MySQLClientInfoInjector";
@@ -48,7 +52,7 @@ public class DriverBridgeMySQL extends AbstractDriverBridge {
 
     static {
         try {
-            driver = new com.mysql.jdbc.Driver();
+            driver = new com.mysql.cj.jdbc.Driver();
         } catch (SQLException e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
@@ -62,24 +66,15 @@ public class DriverBridgeMySQL extends AbstractDriverBridge {
     @SuppressWarnings("all")
     @Override
     public void rewriteUrlParameters(String url, Properties info, ConnectionProvider connectionProvider) throws SQLException {
-        Properties properties = ((com.mysql.jdbc.Driver) driver).parseURL(url, info);
+        ConnectionUrl conUrl = ConnectionUrl.getConnectionUrlInstance(url, info);
+        Properties properties = conUrl.getConnectionArgumentsAsProperties();
 
-        for (Map.Entry entry : properties.entrySet()) {
-            String name = entry.getKey().toString();
-            if (name.equalsIgnoreCase("host")) {
-                connectionProvider.setHost(entry.getValue().toString());
-            } else if (name.equalsIgnoreCase("port")) {
-                connectionProvider.setPort(entry.getValue().toString());
-            } else if (name.equalsIgnoreCase("dbname")) {
-                connectionProvider.setDbName(entry.getValue().toString());
-            } else if (name.equalsIgnoreCase("moduleName")) {
-                connectionProvider.setModuleName(entry.getValue().toString());
-            } else if (name.equalsIgnoreCase("user")) {
-                connectionProvider.setUser(entry.getValue().toString());
-            } else if (name.equalsIgnoreCase("password")) {
-                connectionProvider.setPassword(entry.getValue().toString());
-            }
-        }
+        connectionProvider.setModuleName(properties.getProperty("moduleName"));
+        connectionProvider.setHost(conUrl.getDefaultHost());
+        connectionProvider.setPort(String.valueOf(conUrl.getDefaultPort()));
+        connectionProvider.setDbName(conUrl.getDatabase());
+        connectionProvider.setUser(conUrl.getDefaultUser());
+        connectionProvider.setPassword(conUrl.getDefaultPassword());
 
         /* 以下内容用于修正URL，把module name移除和user、password放入属性 */
         String result;
@@ -151,6 +146,23 @@ public class DriverBridgeMySQL extends AbstractDriverBridge {
                 connectionProvider.getInfo().setProperty(CONNECTION_LIFECYCLE_INTERCEPTORS, cli + "," + MYSQL_INJECTOR);
             } else {
                 connectionProvider.getInfo().setProperty(CONNECTION_LIFECYCLE_INTERCEPTORS, MYSQL_INJECTOR);
+            }
+
+            String connectionAttributes = connectionProvider.getInfo().getProperty(CONNECTION_ATTRIBUTES);
+            if (null == connectionAttributes) {
+                connectionProvider.getInfo().setProperty(CONNECTION_ATTRIBUTES, PROGRAM_NAME_COL_NAME + moduleName);
+            } else {
+                StringBuilder stringBuilder = new StringBuilder();
+                String[] attributes = connectionAttributes.split(",");
+                for (String s : attributes) {
+                    stringBuilder.append(",");
+                    if (s.toLowerCase().startsWith(PROGRAM_NAME_COL_NAME)) {
+                        stringBuilder.append(PROGRAM_NAME_COL_NAME).append(moduleName);
+                    } else {
+                        stringBuilder.append(s);
+                    }
+                }
+                connectionProvider.getInfo().setProperty(CONNECTION_ATTRIBUTES, stringBuilder.toString().substring(1));
             }
         }
     }

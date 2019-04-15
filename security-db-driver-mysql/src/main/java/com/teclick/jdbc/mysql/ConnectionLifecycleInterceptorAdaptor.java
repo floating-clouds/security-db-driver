@@ -15,8 +15,9 @@
  */
 package com.teclick.jdbc.mysql;
 
-import com.mysql.jdbc.Connection;
-import com.mysql.jdbc.ConnectionLifecycleInterceptor;
+import com.mysql.cj.MysqlConnection;
+import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
+import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
 import java.sql.Savepoint;
@@ -30,9 +31,9 @@ import java.util.Properties;
  */
 public class ConnectionLifecycleInterceptorAdaptor implements ConnectionLifecycleInterceptor {
 
-    @SuppressWarnings("all")
     @Override
-    public void init(Connection conn, Properties props) throws SQLException {
+    public ConnectionLifecycleInterceptor init(MysqlConnection conn, Properties props, Log log) {
+        return null;
     }
 
     @SuppressWarnings("all")
@@ -71,12 +72,12 @@ public class ConnectionLifecycleInterceptorAdaptor implements ConnectionLifecycl
     }
 
     @Override
-    public boolean transactionBegun() throws SQLException {
+    public boolean transactionBegun() {
         return true;
     }
 
     @Override
-    public boolean transactionCompleted() throws SQLException {
+    public boolean transactionCompleted() {
         return true;
     }
 
